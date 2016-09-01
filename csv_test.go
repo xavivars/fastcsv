@@ -177,7 +177,7 @@ func TestReadQuotedFieldsWithEscapedQuotes(t *testing.T) {
 }
 
 func BenchmarkStdCsv(b *testing.B) {
-	data, err := ioutil.ReadFile("fl_insurance.csv")
+	data, err := ioutil.ReadFile("./testdata/fl_insurance.csv")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -195,7 +195,7 @@ func BenchmarkStdCsv(b *testing.B) {
 }
 
 func BenchmarkMyCsv(b *testing.B) {
-	data, err := ioutil.ReadFile("fl_insurance.csv")
+	data, err := ioutil.ReadFile("./testdata/fl_insurance.csv")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -213,7 +213,7 @@ func BenchmarkMyCsv(b *testing.B) {
 }
 
 func BenchmarkStdCsvQuoted(b *testing.B) {
-	data, err := ioutil.ReadFile("fl_insurance_quoted.csv")
+	data, err := ioutil.ReadFile("./testdata/fl_insurance_quoted.csv")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -231,7 +231,7 @@ func BenchmarkStdCsvQuoted(b *testing.B) {
 }
 
 func BenchmarkMyCsvQuoted(b *testing.B) {
-	data, err := ioutil.ReadFile("fl_insurance_quoted.csv")
+	data, err := ioutil.ReadFile("./testdata/fl_insurance_quoted.csv")
 	if err != nil {
 		b.Fatal(err)
 	}
