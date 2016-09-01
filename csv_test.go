@@ -40,7 +40,7 @@ func compareLine(line [][]byte, wanted ...string) error {
 }
 
 func TestReadOneRow(t *testing.T) {
-	r := NewCSVReader(strings.NewReader("abc,def,ghi"))
+	r := NewReader(strings.NewReader("abc,def,ghi"))
 
 	fields, err := r.Read()
 	if err != nil {
@@ -57,7 +57,7 @@ func TestReadOneRow(t *testing.T) {
 }
 
 func TestReadMultipleLines(t *testing.T) {
-	r := NewCSVReader(strings.NewReader("abc,def\n1234,56"))
+	r := NewReader(strings.NewReader("abc,def\n1234,56"))
 
 	fields, err := r.Read()
 	if err != nil {
@@ -82,7 +82,7 @@ func TestReadMultipleLines(t *testing.T) {
 }
 
 func TestReadQuotedField(t *testing.T) {
-	r := NewCSVReader(strings.NewReader("\"abc\",\"123\",\"456\""))
+	r := NewReader(strings.NewReader("\"abc\",\"123\",\"456\""))
 
 	fields, err := r.Read()
 	if err != nil {
@@ -99,7 +99,7 @@ func TestReadQuotedField(t *testing.T) {
 }
 
 func TestReadQuotedFieldMultipleLines(t *testing.T) {
-	r := NewCSVReader(strings.NewReader("\"abc\",\"123\"\n\"def\",\"456\""))
+	r := NewReader(strings.NewReader("\"abc\",\"123\"\n\"def\",\"456\""))
 
 	fields, err := r.Read()
 	if err != nil {
@@ -124,7 +124,7 @@ func TestReadQuotedFieldMultipleLines(t *testing.T) {
 }
 
 func TestReadQuotedFieldsWithComma(t *testing.T) {
-	r := NewCSVReader(strings.NewReader("\"a,b,c\",\"d,e,f\""))
+	r := NewReader(strings.NewReader("\"a,b,c\",\"d,e,f\""))
 
 	fields, err := r.Read()
 	if err != nil {
@@ -141,7 +141,7 @@ func TestReadQuotedFieldsWithComma(t *testing.T) {
 }
 
 func TestReadQuotedFieldsWithNewLine(t *testing.T) {
-	r := NewCSVReader(strings.NewReader("\"a\nb\nc\""))
+	r := NewReader(strings.NewReader("\"a\nb\nc\""))
 
 	fields, err := r.Read()
 	if err != nil {
@@ -159,7 +159,7 @@ func TestReadQuotedFieldsWithNewLine(t *testing.T) {
 }
 
 func TestReadQuotedFieldsWithEscapedQuotes(t *testing.T) {
-	r := NewCSVReader(strings.NewReader("\"a\"\"b\""))
+	r := NewReader(strings.NewReader("\"a\"\"b\""))
 
 	fields, err := r.Read()
 	if err != nil {
@@ -177,7 +177,7 @@ func TestReadQuotedFieldsWithEscapedQuotes(t *testing.T) {
 }
 
 func BenchmarkStdCsv(b *testing.B) {
-	data, err := ioutil.ReadFile("./testdata/fl_insurance.csv")
+	data, err := ioutil.ReadFile("fl_insurance.csv")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -195,12 +195,12 @@ func BenchmarkStdCsv(b *testing.B) {
 }
 
 func BenchmarkMyCsv(b *testing.B) {
-	data, err := ioutil.ReadFile("./testdata/fl_insurance.csv")
+	data, err := ioutil.ReadFile("fl_insurance.csv")
 	if err != nil {
 		b.Fatal(err)
 	}
 	for i := 0; i < b.N; i++ {
-		r := NewCSVReader(bytes.NewReader(data))
+		r := NewReader(bytes.NewReader(data))
 		for {
 			if _, err := r.Read(); err != nil {
 				if err == io.EOF {
@@ -213,7 +213,7 @@ func BenchmarkMyCsv(b *testing.B) {
 }
 
 func BenchmarkStdCsvQuoted(b *testing.B) {
-	data, err := ioutil.ReadFile("./testdata/fl_insurance_quoted.csv")
+	data, err := ioutil.ReadFile("fl_insurance_quoted.csv")
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -231,12 +231,12 @@ func BenchmarkStdCsvQuoted(b *testing.B) {
 }
 
 func BenchmarkMyCsvQuoted(b *testing.B) {
-	data, err := ioutil.ReadFile("./testdata/fl_insurance_quoted.csv")
+	data, err := ioutil.ReadFile("fl_insurance_quoted.csv")
 	if err != nil {
 		b.Fatal(err)
 	}
 	for i := 0; i < b.N; i++ {
-		r := NewCSVReader(bytes.NewReader(data))
+		r := NewReader(bytes.NewReader(data))
 		for {
 			if _, err := r.Read(); err != nil {
 				if err == io.EOF {

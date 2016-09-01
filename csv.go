@@ -166,12 +166,12 @@ func (fs *fields) next() bool {
 	return fs.nextUnquotedField()
 }
 
-type CSVReader struct {
+type Reader struct {
 	fields       fields
 	fieldsBuffer [][]byte
 }
 
-func (r *CSVReader) Read() ([][]byte, error) {
+func (r *Reader) Read() ([][]byte, error) {
 	if err := r.fields.err; err != nil {
 		return nil, err
 	}
@@ -183,8 +183,8 @@ func (r *CSVReader) Read() ([][]byte, error) {
 	return r.fieldsBuffer, nil
 }
 
-func NewCSVReader(r io.Reader) CSVReader {
-	return CSVReader{
+func NewReader(r io.Reader) Reader {
+	return Reader{
 		fields: fields{
 			buffer: bufferedReader{r: r, data: make([]byte, 0, 1024)},
 		},
