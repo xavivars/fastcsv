@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"unicode/utf8"
@@ -36,13 +35,8 @@ func (b *bufferedReader) nextRune() (rune, int, error) {
 	return r, size, err
 }
 
-var counter = 0
-
 func (b *bufferedReader) more() error {
 	if len(b.data) == cap(b.data) {
-		counter++
-		println("Hit", counter, "times; prev size:", len(b.data))
-		println("Data:", string(b.data[0:200]))
 		temp := make([]byte, len(b.data), 2*len(b.data)+1)
 		copy(temp, b.data)
 		b.data = temp
@@ -57,7 +51,6 @@ func (b *bufferedReader) more() error {
 func (b *bufferedReader) reset() {
 	copy(b.data, b.data[b.cursor:])
 	b.data = b.data[:len(b.data)-b.cursor]
-	println("RESET")
 	b.cursor = 0
 }
 
@@ -138,7 +131,7 @@ func nextQuotedField(buffer *bufferedReader) ([]byte, bool, error) {
 				return buffer.data[start:writeCursor], true, nil
 			}
 		case '"':
-			if last != '"' { // only reduce the size for the first '"'
+			if last != '"' { // skip the first '"'
 				last = r
 				continue
 			}
@@ -187,17 +180,14 @@ func (r *CSVReader) Read() ([][]byte, error) {
 	for r.fields.next() {
 		r.fieldsBuffer = append(r.fieldsBuffer, r.fields.field)
 	}
-	if err := r.fields.err; err != nil && err != io.EOF {
-		return nil, err
-	}
 	return r.fieldsBuffer, nil
 }
 
 func NewCSVReader(r io.Reader) CSVReader {
 	return CSVReader{
 		fields: fields{
-			buffer: bufferedReader{r: r, data: make([]byte, 0, 242)},
+			buffer: bufferedReader{r: r, data: make([]byte, 0, 1024)},
 		},
-		fieldsBuffer: make([][]byte, 0, 242),
+		fieldsBuffer: make([][]byte, 0, 16),
 	}
 }
