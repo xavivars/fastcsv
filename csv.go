@@ -29,10 +29,28 @@ START:
 	return r, size, nil
 }
 
+func (b *bufferedReader) peek() (byte, error) {
+	if b.cursor >= len(b.data) {
+		if err := b.more(); err != nil {
+			return byte(0), err
+		}
+	}
+	return b.data[b.cursor], nil
+}
+
 func (b *bufferedReader) nextRune() (rune, int, error) {
 	r, size, err := b.peekRune()
 	b.cursor += size
 	return r, size, err
+}
+
+func (b *bufferedReader) next() (byte, error) {
+	ch, err := b.peek()
+	if err != nil {
+		return ch, err
+	}
+	b.cursor++
+	return ch, err
 }
 
 func (b *bufferedReader) more() error {
@@ -62,7 +80,7 @@ func (b *bufferedReader) sliceFrom(start int) []byte {
 	return b.data[start:b.cursor]
 }
 
-type fields struct {
+type runeFields struct {
 	fieldStart int
 	buffer     bufferedReader
 	hitEOL     bool
@@ -70,14 +88,14 @@ type fields struct {
 	err        error
 }
 
-func (fs *fields) Reset() {
+func (fs *runeFields) reset() {
 	fs.buffer.reset()
 	fs.field = nil
 	fs.fieldStart = 0
 	fs.hitEOL = false
 }
 
-func (fs *fields) nextUnquotedField() bool {
+func (fs *runeFields) nextUnquotedField() bool {
 	const sizeEOL = 1
 	const sizeDelim = 1
 	for {
@@ -108,7 +126,70 @@ func (fs *fields) nextUnquotedField() bool {
 	}
 }
 
-func nextQuotedField(buffer *bufferedReader) ([]byte, bool, error) {
+type fields struct {
+	fieldStart int
+	buffer     bufferedReader
+	hitEOL     bool
+	field      []byte
+	err        error
+}
+
+func (fs *fields) reset() {
+	fs.buffer.reset()
+	fs.field = nil
+	fs.fieldStart = 0
+	fs.hitEOL = false
+}
+
+func (fs *fields) nextUnquotedField() bool {
+	const sizeEOL = 1
+	const sizeDelim = 1
+	for {
+		ch, err := fs.buffer.next()
+		if err != nil {
+			if err == io.EOF {
+				fs.field = fs.buffer.data[fs.fieldStart:fs.buffer.cursor]
+				fs.hitEOL = true
+				fs.err = err
+				return true
+			}
+			fs.err = err
+			return false
+		}
+
+		switch ch {
+		case ',':
+			fs.field = fs.buffer.data[fs.fieldStart : fs.buffer.cursor-sizeDelim]
+			fs.fieldStart = fs.buffer.cursor
+			return true
+		case '\n':
+			fs.field = fs.buffer.data[fs.fieldStart : fs.buffer.cursor-sizeEOL]
+			fs.hitEOL = true
+			return true
+		default:
+			continue
+		}
+	}
+}
+
+func (fs *runeFields) next() bool {
+	if fs.hitEOL {
+		return false
+	}
+	first, _, err := fs.buffer.peekRune()
+	if err != nil {
+		fs.err = err
+		return false
+	}
+
+	if first == '"' {
+		fs.field, fs.hitEOL, fs.err = nextRuneQuotedField(&fs.buffer)
+		return fs.err == nil || fs.err == io.EOF
+	}
+	return fs.nextUnquotedField()
+}
+
+func nextRuneQuotedField(buffer *bufferedReader) ([]byte, bool, error) {
 	// skip past the initial quote rune; we already checked the error when we
 	// peeked it before this method call, so no need to handle it again
 	buffer.nextRune()
@@ -148,12 +229,52 @@ func nextQuotedField(buffer *bufferedReader) ([]byte, bool, error) {
 		}
 	}
 }
+func nextQuotedField(buffer *bufferedReader) ([]byte, bool, error) {
+	// skip past the initial quote rune; we already checked the error when we
+	// peeked it before this method call, so no need to handle it again
+	buffer.next()
+	start := buffer.cursor
+
+	writeCursor := buffer.cursor
+	last := byte(0)
+	for {
+		r, err := buffer.next()
+		if err != nil {
+			return buffer.data[start:writeCursor], true, err
+		}
+		switch r {
+		case ',':
+			if last == '"' {
+				return buffer.data[start:writeCursor], false, nil
+			}
+		case '\n':
+			if last == '"' {
+				return buffer.data[start:writeCursor], true, nil
+			}
+		case '"':
+			if last != '"' { // skip the first '"'
+				last = r
+				continue
+			}
+		}
+		writeCursor++
+		last = r
+		// copy the current rune onto writeCursor if writeCursor !=
+		// buffer.cursor
+		if writeCursor != buffer.cursor {
+			copy(
+				buffer.data[writeCursor:writeCursor+1],
+				buffer.data[buffer.cursor:buffer.cursor+1],
+			)
+		}
+	}
+}
 
 func (fs *fields) next() bool {
 	if fs.hitEOL {
 		return false
 	}
-	first, _, err := fs.buffer.peekRune()
+	first, err := fs.buffer.peek()
 	if err != nil {
 		fs.err = err
 		return false
@@ -175,7 +296,7 @@ func (r *Reader) Read() ([][]byte, error) {
 	if err := r.fields.err; err != nil {
 		return nil, err
 	}
-	r.fields.Reset()
+	r.fields.reset()
 	r.fieldsBuffer = r.fieldsBuffer[:0]
 	for r.fields.next() {
 		r.fieldsBuffer = append(r.fieldsBuffer, r.fields.field)
@@ -186,6 +307,32 @@ func (r *Reader) Read() ([][]byte, error) {
 func NewReader(r io.Reader) Reader {
 	return Reader{
 		fields: fields{
+			buffer: bufferedReader{r: r, data: make([]byte, 0, 1024)},
+		},
+		fieldsBuffer: make([][]byte, 0, 16),
+	}
+}
+
+type RuneReader struct {
+	fields       runeFields
+	fieldsBuffer [][]byte
+}
+
+func (r *RuneReader) Read() ([][]byte, error) {
+	if err := r.fields.err; err != nil {
+		return nil, err
+	}
+	r.fields.reset()
+	r.fieldsBuffer = r.fieldsBuffer[:0]
+	for r.fields.next() {
+		r.fieldsBuffer = append(r.fieldsBuffer, r.fields.field)
+	}
+	return r.fieldsBuffer, nil
+}
+
+func NewRuneReader(r io.Reader) RuneReader {
+	return RuneReader{
+		fields: runeFields{
 			buffer: bufferedReader{r: r, data: make([]byte, 0, 1024)},
 		},
 		fieldsBuffer: make([][]byte, 0, 16),

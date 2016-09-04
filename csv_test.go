@@ -10,6 +10,20 @@ import (
 	"testing"
 )
 
+var data, quotedData []byte
+
+func init() {
+	var err error
+	data, err = ioutil.ReadFile("testdata/fl_insurance.csv")
+	if err != nil {
+		panic(err)
+	}
+	quotedData, err = ioutil.ReadFile("testdata/fl_insurance_quoted.csv")
+	if err != nil {
+		panic(err)
+	}
+}
+
 func toStrings(bs [][]byte) []string {
 	strs := make([]string, 0, len(bs))
 	for _, b := range bs {
@@ -177,10 +191,6 @@ func TestReadQuotedFieldsWithEscapedQuotes(t *testing.T) {
 }
 
 func BenchmarkStdCsv(b *testing.B) {
-	data, err := ioutil.ReadFile("fl_insurance.csv")
-	if err != nil {
-		b.Fatal(err)
-	}
 	for i := 0; i < b.N; i++ {
 		r := csv.NewReader(bytes.NewReader(data))
 		for {
@@ -195,12 +205,22 @@ func BenchmarkStdCsv(b *testing.B) {
 }
 
 func BenchmarkMyCsv(b *testing.B) {
-	data, err := ioutil.ReadFile("fl_insurance.csv")
-	if err != nil {
-		b.Fatal(err)
-	}
 	for i := 0; i < b.N; i++ {
 		r := NewReader(bytes.NewReader(data))
+		for {
+			if _, err := r.Read(); err != nil {
+				if err == io.EOF {
+					break
+				}
+				b.Fatal(err)
+			}
+		}
+	}
+}
+
+func BenchmarkMyRuneCsv(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		r := NewRuneReader(bytes.NewReader(data))
 		for {
 			if _, err := r.Read(); err != nil {
 				if err == io.EOF {
@@ -213,12 +233,8 @@ func BenchmarkMyCsv(b *testing.B) {
 }
 
 func BenchmarkStdCsvQuoted(b *testing.B) {
-	data, err := ioutil.ReadFile("fl_insurance_quoted.csv")
-	if err != nil {
-		b.Fatal(err)
-	}
 	for i := 0; i < b.N; i++ {
-		r := csv.NewReader(bytes.NewReader(data))
+		r := csv.NewReader(bytes.NewReader(quotedData))
 		for {
 			if _, err := r.Read(); err != nil {
 				if err == io.EOF {
@@ -231,12 +247,22 @@ func BenchmarkStdCsvQuoted(b *testing.B) {
 }
 
 func BenchmarkMyCsvQuoted(b *testing.B) {
-	data, err := ioutil.ReadFile("fl_insurance_quoted.csv")
-	if err != nil {
-		b.Fatal(err)
-	}
 	for i := 0; i < b.N; i++ {
-		r := NewReader(bytes.NewReader(data))
+		r := NewReader(bytes.NewReader(quotedData))
+		for {
+			if _, err := r.Read(); err != nil {
+				if err == io.EOF {
+					break
+				}
+				b.Fatal(err)
+			}
+		}
+	}
+}
+
+func BenchmarkMyRuneCsvQuoted(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		r := NewRuneReader(bytes.NewReader(quotedData))
 		for {
 			if _, err := r.Read(); err != nil {
 				if err == io.EOF {
