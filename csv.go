@@ -8,26 +8,6 @@ type bufferedReader struct {
 	cursor int
 }
 
-func (b *bufferedReader) peek() (byte, error) {
-	if b.cursor >= len(b.data) {
-		if err := b.more(); err != nil {
-			return byte(0), err
-		}
-	}
-	return b.data[b.cursor], nil
-}
-
-func (b *bufferedReader) next() (byte, error) {
-	if b.cursor >= len(b.data) {
-		if err := b.more(); err != nil {
-			return byte(0), err
-		}
-	}
-	ch := b.data[b.cursor]
-	b.cursor++
-	return ch, nil
-}
-
 func (b *bufferedReader) more() error {
 	if len(b.data) == cap(b.data) {
 		temp := make([]byte, len(b.data), 2*len(b.data)+1)
@@ -45,14 +25,6 @@ func (b *bufferedReader) reset() {
 	copy(b.data, b.data[b.cursor:])
 	b.data = b.data[:len(b.data)-b.cursor]
 	b.cursor = 0
-}
-
-func (b *bufferedReader) slice(start, end int) []byte {
-	return b.data[start:end]
-}
-
-func (b *bufferedReader) sliceFrom(start int) []byte {
-	return b.data[start:b.cursor]
 }
 
 type fields struct {
@@ -109,19 +81,24 @@ func (fs *fields) nextUnquotedField() bool {
 }
 
 func nextQuotedField(buffer *bufferedReader) ([]byte, bool, error) {
-	// skip past the initial quote rune; we already checked the error when we
-	// peeked it before this method call, so no need to handle it again
-	buffer.next()
+	// skip past the initial quote rune
+	buffer.cursor++
 	start := buffer.cursor
 
 	writeCursor := buffer.cursor
 	last := byte(0)
 	for {
-		r, err := buffer.next()
-		if err != nil {
-			return buffer.data[start:writeCursor], true, err
+		// next byte
+		if buffer.cursor >= len(buffer.data) {
+			if err := buffer.more(); err != nil {
+				return buffer.data[start:writeCursor], true, err
+			}
 		}
-		switch r {
+		ch := buffer.data[buffer.cursor]
+		buffer.cursor++
+
+		// handle byte
+		switch ch {
 		case ',':
 			if last == '"' {
 				return buffer.data[start:writeCursor], false, nil
@@ -132,12 +109,12 @@ func nextQuotedField(buffer *bufferedReader) ([]byte, bool, error) {
 			}
 		case '"':
 			if last != '"' { // skip the first '"'
-				last = r
+				last = ch
 				continue
 			}
 		}
 		writeCursor++
-		last = r
+		last = ch
 		// copy the current rune onto writeCursor if writeCursor !=
 		// buffer.cursor
 		if writeCursor != buffer.cursor {
