@@ -204,7 +204,7 @@ func BenchmarkStdCsv(b *testing.B) {
 	}
 }
 
-func BenchmarkMyCsv(b *testing.B) {
+func BenchmarkFastCsv(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		r := NewReader(bytes.NewReader(data))
 		for {
@@ -232,7 +232,7 @@ func BenchmarkStdCsvQuoted(b *testing.B) {
 	}
 }
 
-func BenchmarkMyCsvQuoted(b *testing.B) {
+func BenchmarkFastCsvQuoted(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		r := NewReader(bytes.NewReader(quotedData))
 		for {
