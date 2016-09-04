@@ -218,20 +218,6 @@ func BenchmarkMyCsv(b *testing.B) {
 	}
 }
 
-func BenchmarkMyRuneCsv(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		r := NewRuneReader(bytes.NewReader(data))
-		for {
-			if _, err := r.Read(); err != nil {
-				if err == io.EOF {
-					break
-				}
-				b.Fatal(err)
-			}
-		}
-	}
-}
-
 func BenchmarkStdCsvQuoted(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		r := csv.NewReader(bytes.NewReader(quotedData))
@@ -249,20 +235,6 @@ func BenchmarkStdCsvQuoted(b *testing.B) {
 func BenchmarkMyCsvQuoted(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		r := NewReader(bytes.NewReader(quotedData))
-		for {
-			if _, err := r.Read(); err != nil {
-				if err == io.EOF {
-					break
-				}
-				b.Fatal(err)
-			}
-		}
-	}
-}
-
-func BenchmarkMyRuneCsvQuoted(b *testing.B) {
-	for i := 0; i < b.N; i++ {
-		r := NewRuneReader(bytes.NewReader(quotedData))
 		for {
 			if _, err := r.Read(); err != nil {
 				if err == io.EOF {
