@@ -1,0 +1,7 @@
+syntax:glob
+
+*.bench
+*.orig
+*.out
+*.svg
+*.test
