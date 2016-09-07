@@ -32,12 +32,20 @@ func toStrings(bs [][]byte) []string {
 	return strs
 }
 
+func quote(strs []string) []string {
+	out := make([]string, 0, len(strs))
+	for _, s := range strs {
+		out = append(out, fmt.Sprintf("\"%s\"", s))
+	}
+	return out
+}
+
 func compareLine(line [][]byte, wanted ...string) error {
 	if len(line) != len(wanted) {
 		return fmt.Errorf(
 			"Wanted [%s]; got [%s]",
-			strings.Join(wanted, ", "),
-			strings.Join(toStrings(line), ", "),
+			strings.Join(quote(wanted), ", "),
+			strings.Join(quote(toStrings(line)), ", "),
 		)
 	}
 	for i, s := range toStrings(line) {
@@ -166,8 +174,7 @@ func TestReadQuotedFieldsWithNewLine(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = r.Read()
-	if err != io.EOF {
+	if _, err := r.Read(); err != io.EOF {
 		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
@@ -184,8 +191,85 @@ func TestReadQuotedFieldsWithEscapedQuotes(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	_, err = r.Read()
-	if err != io.EOF {
+	if _, err := r.Read(); err != io.EOF {
+		t.Fatal("Wanted io.EOF; got:", err)
+	}
+}
+
+func TestReadTrailingNewline(t *testing.T) {
+	r := NewReader(strings.NewReader("a,b,c\n"))
+
+	fields, err := r.Read()
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+
+	if err := compareLine(fields, "a", "b", "c"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := r.Read(); err != io.EOF {
+		t.Fatal("Wanted io.EOF; got:", err)
+	}
+}
+
+func TestReadEmptyMiddleLine(t *testing.T) {
+	r := NewReader(strings.NewReader("a,b\n\nc,d"))
+
+	fields, err := r.Read()
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+
+	if err := compareLine(fields, "a", "b"); err != nil {
+		t.Fatal(err)
+	}
+
+	fields, err = r.Read()
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+
+	if err := compareLine(fields, ""); err != nil {
+		t.Fatal(err)
+	}
+
+	fields, err = r.Read()
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+
+	if err := compareLine(fields, "c", "d"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := r.Read(); err != io.EOF {
+		t.Fatal("Wanted io.EOF; got:", err)
+	}
+}
+
+func TestReadCRLF(t *testing.T) {
+	r := NewReader(strings.NewReader("a,b,c\r\nd,e,f"))
+
+	fields, err := r.Read()
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+
+	if err := compareLine(fields, "a", "b", "c"); err != nil {
+		t.Fatal(err)
+	}
+
+	fields, err = r.Read()
+	if err != nil {
+		t.Fatal("Unexpected error:", err)
+	}
+
+	if err := compareLine(fields, "d", "e", "f"); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := r.Read(); err != io.EOF {
 		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
