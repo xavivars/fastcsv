@@ -61,216 +61,89 @@ func compareLine(line [][]byte, wanted ...string) error {
 	return nil
 }
 
+func testCSV(source string, wanted [][]string) error {
+	r := NewReader(strings.NewReader(source))
+
+	for i, wantedLine := range wanted {
+		fields, err := r.Read()
+		if err != nil {
+			return fmt.Errorf("Unexpected error: %v", err)
+		}
+		if err := compareLine(fields, wantedLine...); err != nil {
+			return fmt.Errorf("Mismatch on line %d: %v", i+1, err)
+		}
+	}
+
+	if _, err := r.Read(); err != io.EOF {
+		return fmt.Errorf("Wanted io.EOF; got: %v", err)
+	}
+	return nil
+}
+
 func TestReadOneRow(t *testing.T) {
-	r := NewReader(strings.NewReader("abc,def,ghi"))
-
-	fields, err := r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if err := compareLine(fields, "abc", "def", "ghi"); err != nil {
+	wanted := [][]string{{"abc", "def", "ghi"}}
+	if err := testCSV("abc,def,ghi", wanted); err != nil {
 		t.Fatal(err)
-	}
-
-	if _, err = r.Read(); err != io.EOF {
-		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
 
 func TestReadMultipleLines(t *testing.T) {
-	r := NewReader(strings.NewReader("abc,def\n1234,56"))
-
-	fields, err := r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if err := compareLine(fields, "abc", "def"); err != nil {
+	wanted := [][]string{{"abc", "def"}, {"1234", "56"}}
+	if err := testCSV("abc,def\n1234,56", wanted); err != nil {
 		t.Fatal(err)
-	}
-
-	fields, err = r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-	if err := compareLine(fields, "1234", "56"); err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := r.Read(); err != io.EOF {
-		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
 
 func TestReadQuotedField(t *testing.T) {
-	r := NewReader(strings.NewReader("\"abc\",\"123\",\"456\""))
-
-	fields, err := r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-	if err := compareLine(fields, "abc", "123", "456"); err != nil {
+	wanted := [][]string{{"abc", "123", "456"}}
+	if err := testCSV("\"abc\",\"123\",\"456\"", wanted); err != nil {
 		t.Fatal(err)
-	}
-
-	_, err = r.Read()
-	if err != io.EOF {
-		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
 
 func TestReadQuotedFieldMultipleLines(t *testing.T) {
-	r := NewReader(strings.NewReader("\"abc\",\"123\"\n\"def\",\"456\""))
-
-	fields, err := r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-	if err := compareLine(fields, "abc", "123"); err != nil {
+	wanted := [][]string{{"abc", "123"}, {"def", "456"}}
+	if err := testCSV("\"abc\",\"123\"\n\"def\",\"456\"", wanted); err != nil {
 		t.Fatal(err)
-	}
-
-	fields, err = r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-	if err := compareLine(fields, "def", "456"); err != nil {
-		t.Fatal(err)
-	}
-
-	_, err = r.Read()
-	if err != io.EOF {
-		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
 
 func TestReadQuotedFieldsWithComma(t *testing.T) {
-	r := NewReader(strings.NewReader("\"a,b,c\",\"d,e,f\""))
-
-	fields, err := r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-	if err := compareLine(fields, "a,b,c", "d,e,f"); err != nil {
+	wanted := [][]string{{"a,b,c", "d,e,f"}}
+	if err := testCSV("\"a,b,c\",\"d,e,f\"", wanted); err != nil {
 		t.Fatal(err)
-	}
-
-	_, err = r.Read()
-	if err != io.EOF {
-		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
 
 func TestReadQuotedFieldsWithNewLine(t *testing.T) {
-	r := NewReader(strings.NewReader("\"a\nb\nc\""))
-
-	fields, err := r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if err := compareLine(fields, "a\nb\nc"); err != nil {
+	if err := testCSV("\"a\nb\nc\"", [][]string{{"a\nb\nc"}}); err != nil {
 		t.Fatal(err)
-	}
-
-	if _, err := r.Read(); err != io.EOF {
-		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
 
 func TestReadQuotedFieldsWithEscapedQuotes(t *testing.T) {
-	r := NewReader(strings.NewReader("\"a\"\"b\""))
-
-	fields, err := r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if err := compareLine(fields, "a\"b"); err != nil {
+	if err := testCSV("\"a\"\"b\"", [][]string{{"a\"b"}}); err != nil {
 		t.Fatal(err)
-	}
-
-	if _, err := r.Read(); err != io.EOF {
-		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
 
 func TestReadTrailingNewline(t *testing.T) {
-	r := NewReader(strings.NewReader("a,b,c\n"))
-
-	fields, err := r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if err := compareLine(fields, "a", "b", "c"); err != nil {
+	if err := testCSV("a,b,c\n", [][]string{{"a", "b", "c"}}); err != nil {
 		t.Fatal(err)
-	}
-
-	if _, err := r.Read(); err != io.EOF {
-		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
 
 func TestReadEmptyMiddleLine(t *testing.T) {
-	r := NewReader(strings.NewReader("a,b\n\nc,d"))
-
-	fields, err := r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if err := compareLine(fields, "a", "b"); err != nil {
+	wanted := [][]string{{"a", "b"}, {""}, {"c", "d"}}
+	if err := testCSV("a,b\n\nc,d", wanted); err != nil {
 		t.Fatal(err)
-	}
-
-	fields, err = r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if err := compareLine(fields, ""); err != nil {
-		t.Fatal(err)
-	}
-
-	fields, err = r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if err := compareLine(fields, "c", "d"); err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := r.Read(); err != io.EOF {
-		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
 
 func TestReadCRLF(t *testing.T) {
-	r := NewReader(strings.NewReader("a,b,c\r\nd,e,f"))
-
-	fields, err := r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if err := compareLine(fields, "a", "b", "c"); err != nil {
+	wanted := [][]string{{"a", "b", "c"}, {"d", "e", "f"}}
+	if err := testCSV("a,b,c\r\nd,e,f", wanted); err != nil {
 		t.Fatal(err)
-	}
-
-	fields, err = r.Read()
-	if err != nil {
-		t.Fatal("Unexpected error:", err)
-	}
-
-	if err := compareLine(fields, "d", "e", "f"); err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := r.Read(); err != io.EOF {
-		t.Fatal("Wanted io.EOF; got:", err)
 	}
 }
 
