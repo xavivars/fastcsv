@@ -137,7 +137,7 @@ func (fs *fields) next() bool {
 		}
 	}
 
-	if fs.buffer.data[fs.buffer.cursor] == '"' {
+	if first := fs.buffer.data[fs.buffer.cursor]; first == '"' {
 		fs.field, fs.hitEOL, fs.err = nextQuotedField(&fs.buffer)
 		return fs.err == nil || fs.err == io.EOF
 	}
@@ -158,6 +158,23 @@ func (r *Reader) Read() ([][]byte, error) {
 	for r.fields.next() {
 		r.fieldsBuffer = append(r.fieldsBuffer, r.fields.field)
 	}
+
+	// CRLF support: if there are fields in this row, and the last field ends
+	// with `\r`, then it must have been part of a CRLF line ending, so drop
+	// the `\r`.
+	if len(r.fieldsBuffer) > 0 {
+		lastField := r.fieldsBuffer[len(r.fieldsBuffer)-1]
+		if len(lastField) > 0 && lastField[len(lastField)-1] == '\r' {
+			lastField = lastField[:len(lastField)-1]
+			r.fieldsBuffer[len(r.fieldsBuffer)-1] = lastField
+		}
+	}
+
+	// Handle CSVs that end with a blank last line
+	if len(r.fieldsBuffer) == 0 {
+		return nil, io.EOF
+	}
+
 	return r.fieldsBuffer, nil
 }
 
