@@ -1,6 +1,8 @@
 README
 ------
 
+[![Build Status](https://drone.io/bitbucket.org/weberc2/fastcsv/status.png)](https://drone.io/bitbucket.org/weberc2/fastcsv/latest)
+
 **Warning**: This library is still in alpha. API and behavior are expected to
 change.
 
