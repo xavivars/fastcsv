@@ -1,0 +1,9 @@
+build:
+  image: golang
+  commands:
+    - go get
+    - go test -v
+cache:
+  mount:
+    - node_modules
+    - .git
