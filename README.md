@@ -2,6 +2,7 @@ README
 ------
 
 [![Build Status](https://drone.io/bitbucket.org/weberc2/fastcsv/status.png)](https://drone.io/bitbucket.org/weberc2/fastcsv/latest)
+[![Godoc Reference](http://img.shields.io/badge/godoc-reference-5272B4.svg?style=flat-square)](https://godoc.org/bitbucket.org/weberc2/fastcsv)
 
 **Warning**: This library is still in alpha. API and behavior are expected to
 change.
