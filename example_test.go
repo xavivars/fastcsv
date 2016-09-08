@@ -36,7 +36,7 @@ golang,Google
 swift,Apple
 rust,Mozilla`))
 	for r.Next() {
-		fmt.Printf("[%s]\n", string(bytes.Join(row, []byte(" | "))))
+		fmt.Printf("[%s]\n", string(bytes.Join(r.Fields(), []byte(" | "))))
 	}
 	if err := r.Err(); err != nil {
 		panic(err)
