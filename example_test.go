@@ -21,19 +21,29 @@ rust,Mozilla`))
 			panic(err)
 		}
 
-		fmt.Println(string(bytes.Join(row, []byte(", "))))
+		fmt.Printf("[%s]\n", string(bytes.Join(row, []byte(" | "))))
 	}
+	// Output:
+	// [Language | Sponsor]
+	// [golang | Google]
+	// [swift | Apple]
+	// [rust | Mozilla]
 }
 
-func ExampleReader_iterating() {
+func ExampleReader_Next() {
 	r := NewReader(strings.NewReader(`Language,Sponsor
 golang,Google
 swift,Apple
 rust,Mozilla`))
 	for r.Next() {
-		fmt.Println(string(bytes.Join(r.Fields(), []byte(", "))))
+		fmt.Printf("[%s]\n", string(bytes.Join(row, []byte(" | "))))
 	}
 	if err := r.Err(); err != nil {
 		panic(err)
 	}
+	// Output:
+	// [Language | Sponsor]
+	// [golang | Google]
+	// [swift | Apple]
+	// [rust | Mozilla]
 }
