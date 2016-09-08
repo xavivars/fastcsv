@@ -149,9 +149,10 @@ type Reader struct {
 	fieldsBuffer [][]byte
 }
 
-func (r *Reader) Read() ([][]byte, error) {
-	if err := r.fields.err; err != nil {
-		return nil, err
+// Scans in the next row
+func (r *Reader) Next() bool {
+	if r.fields.err != nil {
+		return false
 	}
 	r.fields.reset()
 	r.fieldsBuffer = r.fieldsBuffer[:0]
@@ -172,12 +173,39 @@ func (r *Reader) Read() ([][]byte, error) {
 
 	// Handle CSVs that end with a blank last line
 	if len(r.fieldsBuffer) == 0 {
-		return nil, io.EOF
+		r.fields.err = io.EOF
+		return false
 	}
 
-	return r.fieldsBuffer, nil
+	return true
 }
 
+// Returns the last row of fields encountered. These fields are only valid
+// until the next call to Next() or Read().
+func (r *Reader) Fields() [][]byte {
+	return r.fieldsBuffer
+}
+
+// Return the last error encountered; returns nil if no error was encountered
+// or if the last error was io.EOF.
+func (r *Reader) Err() error {
+	if r.fields.err != io.EOF {
+		return r.fields.err
+	}
+	return nil
+}
+
+// Read and return the next row and/or any errors encountered. The byte slices
+// are only valid until the next call to Next() or Read(). Returns nil, io.EOF
+// when the file is consumed.
+func (r *Reader) Read() ([][]byte, error) {
+	if r.Next() {
+		return r.fieldsBuffer, nil
+	}
+	return nil, r.fields.err
+}
+
+// Constructs a new Reader from a source CSV io.Reader
 func NewReader(r io.Reader) Reader {
 	return Reader{
 		fields: fields{

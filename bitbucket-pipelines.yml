@@ -1,5 +1,4 @@
-    image: golang #:tag
-
+    image: golang
     pipelines:
       default:
         - step:
