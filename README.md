@@ -24,3 +24,15 @@ a time; subsequent calls to `Read()` invalidate the previously read row. This
 keeps allocs down to `O(1)` instead of `O(N)`.
 * This implementation deals in `[]byte` instead of `string`. This also helps to
 keep allocs down to `O(1)` instead of `O(N)`.
+
+## Example
+
+```go
+r := NewReader(csvFile)
+for r.Next() {
+    fmt.Println(string(bytes.Join(r.Fields(), []byte(", "))))
+}
+if err := r.Err(); err != nil {
+    panic(err)
+}
+```
