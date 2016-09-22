@@ -1,0 +1,9 @@
+    image: golang
+    pipelines:
+      default:
+        - step:
+            script:
+              - echo $GOPATH
+              - pwd
+              - go version
+              - go test -v
