@@ -86,10 +86,10 @@ func nextQuotedField(buffer *bufferedReader) ([]byte, bool, error) {
 	start := buffer.cursor
 
 	writeCursor := buffer.cursor
-	last := byte(0)
+	quoteCount := 0 // count consecutive quotes
 	for {
 		// next byte
-		if buffer.cursor >= len(buffer.data) {
+		if buffer.cursor+1 >= len(buffer.data) {
 			if err := buffer.more(); err != nil {
 				return buffer.data[start:writeCursor], true, err
 			}
@@ -100,21 +100,23 @@ func nextQuotedField(buffer *bufferedReader) ([]byte, bool, error) {
 		// handle byte
 		switch ch {
 		case ',':
-			if last == '"' {
+			if quoteCount%2 != 0 {
 				return buffer.data[start:writeCursor], false, nil
 			}
 		case '\n':
-			if last == '"' {
+			if quoteCount%2 != 0 {
 				return buffer.data[start:writeCursor], true, nil
 			}
 		case '"':
-			if last != '"' { // skip the first '"'
-				last = ch
+			quoteCount++
+
+			// only write odd-numbered quotation marks
+			if quoteCount%2 == 1 {
 				continue
 			}
 		}
+		quoteCount = 0
 		writeCursor++
-		last = ch
 		// copy the current rune onto writeCursor if writeCursor !=
 		// buffer.cursor
 		if writeCursor != buffer.cursor {
