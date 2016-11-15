@@ -49,65 +49,82 @@ func compareLine(line [][]byte, wanted ...string) error {
 
 func TestRead(t *testing.T) {
 	testCases := []struct {
-		Title  string
-		Input  string
-		Wanted [][]string
-	}{
-		{
-			Title:  "OneRow",
-			Input:  "abc,def,ghi",
-			Wanted: [][]string{{"abc", "def", "ghi"}},
-		},
-		{
-			Title:  "MultipleLines",
-			Input:  "abc,def\n1234,56",
-			Wanted: [][]string{{"abc", "def"}, {"1234", "56"}},
-		},
-		{
-			Title:  "QuotedField",
-			Input:  "\"abc\",\"123\",\"456\"",
-			Wanted: [][]string{{"abc", "123", "456"}},
-		},
-		{
-			Title:  "QuotedFieldMultipleLines",
-			Input:  "\"abc\",\"123\"\n\"def\",\"456\"",
-			Wanted: [][]string{{"abc", "123"}, {"def", "456"}},
-		},
-		{
-			Title:  "QuotedFieldsWithComma",
-			Input:  "\"a,b,c\",\"d,e,f\"",
-			Wanted: [][]string{{"a,b,c", "d,e,f"}},
-		},
-		{
-			Title:  "QuotedFieldsWithNewLine",
-			Input:  "\"a\nb\nc\"",
-			Wanted: [][]string{{"a\nb\nc"}},
-		},
-		{
-			Title:  "QuotedFieldsWithEscapedQuotes",
-			Input:  "\"a\"\"b\"",
-			Wanted: [][]string{{"a\"b"}},
-		},
-		{
-			Title:  "TrailingNewline",
-			Input:  "a,b,c\n",
-			Wanted: [][]string{{"a", "b", "c"}},
-		},
-		{
-			Title:  "EmptyMiddleLine",
-			Input:  "a,b\n\nc,d",
-			Wanted: [][]string{{"a", "b"}, {""}, {"c", "d"}},
-		},
-		{
-			Title:  "CRLF",
-			Input:  "a,b,c\r\nd,e,f",
-			Wanted: [][]string{{"a", "b", "c"}, {"d", "e", "f"}},
-		},
-	}
+		Title     string
+		Input     string
+		Wanted    [][]string
+		BufferCap int
+	}{{
+		Title:  "OneRow",
+		Input:  "abc,def,ghi",
+		Wanted: [][]string{{"abc", "def", "ghi"}},
+	}, {
+		Title:  "MultipleLines",
+		Input:  "abc,def\n1234,56",
+		Wanted: [][]string{{"abc", "def"}, {"1234", "56"}},
+	}, {
+		Title:  "QuotedField",
+		Input:  "\"abc\",\"123\",\"456\"",
+		Wanted: [][]string{{"abc", "123", "456"}},
+	}, {
+		Title:  "QuotedFieldMultipleLines",
+		Input:  "\"abc\",\"123\"\n\"def\",\"456\"",
+		Wanted: [][]string{{"abc", "123"}, {"def", "456"}},
+	}, {
+		Title:  "QuotedFieldsWithComma",
+		Input:  "\"a,b,c\",\"d,e,f\"",
+		Wanted: [][]string{{"a,b,c", "d,e,f"}},
+	}, {
+		Title:  "QuotedFieldsWithNewLine",
+		Input:  "\"a\nb\nc\"",
+		Wanted: [][]string{{"a\nb\nc"}},
+	}, {
+		Title:  "QuotedFieldsWithEscapedQuotes",
+		Input:  "\"a\"\"b\"",
+		Wanted: [][]string{{"a\"b"}},
+	}, {
+		Title:  "QuotedFieldsWithConsecutiveEscapedQuotes",
+		Input:  "\"\"\"\"\"a\"\"\"\"\"",
+		Wanted: [][]string{{"\"\"a\"\""}},
+	}, {
+		Title:  "QuotedFieldsWithEscapeQuotesAndMultipleLines",
+		Input:  "abc,\"1\"\"\n2\"",
+		Wanted: [][]string{{"abc", "1\"\n2"}},
+	}, {
+		Title:  "QuotedFieldsWithConsecutiveEscapedQuotesAndMultipleLines",
+		Input:  "abc,\"\"\"\"\"a\"\"\"\"\nb\"",
+		Wanted: [][]string{{"abc", "\"\"a\"\"\nb"}},
+	}, {
+		Title:     "QuotedFieldsWithLinesLongerThanBuffer",
+		Input:     "\"abc\",\"def\",\"ghi\"",
+		Wanted:    [][]string{{"abc", "def", "ghi"}},
+		BufferCap: 4,
+	}, {
+		Title:  "TrailingNewline",
+		Input:  "a,b,c\n",
+		Wanted: [][]string{{"a", "b", "c"}},
+	}, {
+		Title:  "EmptyMiddleLine",
+		Input:  "a,b\n\nc,d",
+		Wanted: [][]string{{"a", "b"}, {""}, {"c", "d"}},
+	}, {
+		Title:  "CRLF",
+		Input:  "a,b,c\r\nd,e,f",
+		Wanted: [][]string{{"a", "b", "c"}, {"d", "e", "f"}},
+	}}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.Title, func(t *testing.T) {
-			r := NewReader(strings.NewReader(testCase.Input))
+			r := Reader{
+				fields: fields{
+					// initialize with a deliberately small buffer so we get
+					// good coverage of i/o buffering
+					buffer: bufferedReader{
+						r:    strings.NewReader(testCase.Input),
+						data: make([]byte, 0, testCase.BufferCap),
+					},
+				},
+				fieldsBuffer: make([][]byte, 0, 16),
+			}
 			for i, wantedLine := range testCase.Wanted {
 				fields, err := r.Read()
 				if err != nil {
